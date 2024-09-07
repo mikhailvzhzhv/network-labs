@@ -3,6 +3,7 @@ from timer import Timer
 import socket
 from socket import socket as sock
 import struct
+import sys
 
 
 def stars_boarded(f):
@@ -23,23 +24,48 @@ class CopyFinder:
         self.__diconnected_copies: list = list()
         self.__ttl: int = 32
         self.__timer: Timer = Timer(1000)
+        self.__family = socket.AF_INET6 if ":" in self.__MC_GROUP else socket.AF_INET
         self.__sock_sender: sock = sock(
-            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+            self.__family, socket.SOCK_DGRAM, socket.IPPROTO_UDP
         )
         self.__sock_receiver: sock = sock(
-            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+            self.__family, socket.SOCK_DGRAM, socket.IPPROTO_UDP
         )
 
-        self.__sock_sender.setsockopt(
-            socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.__ttl
-        )
-        self.__sock_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.__sock_receiver.bind(self.__ADDRESS)
+        match self.__family:
+            case socket.AF_INET:
+                self.__sock_sender.setsockopt(
+                    socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.__ttl
+                )
+                self.__sock_receiver.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                )
+                self.__sock_receiver.bind(("0.0.0.0", self.__PORT))
 
-        mreq = struct.pack("4sl", socket.inet_aton(self.__MC_GROUP), socket.INADDR_ANY)
-        self.__sock_receiver.setsockopt(
-            socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq
-        )
+                mreq = struct.pack(
+                    "4sl", socket.inet_aton(self.__MC_GROUP), socket.INADDR_ANY
+                )
+                self.__sock_receiver.setsockopt(
+                    socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq
+                )
+            case socket.AF_INET6:
+                self.__sock_sender.setsockopt(
+                    socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, self.__ttl
+                )
+                self.__sock_receiver.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+                )
+                self.__sock_receiver.bind(("::", self.__PORT))
+
+                mreq = struct.pack(
+                    "16s15s",
+                    socket.inet_pton(socket.AF_INET6, self.__MC_GROUP),
+                    b"\0" * 15 + b"\001",
+                )
+                self.__sock_receiver.setsockopt(
+                    socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq
+                )
+
         self.__sock_receiver.settimeout(1)
 
     @stars_boarded
@@ -81,6 +107,9 @@ class CopyFinder:
 
 
 if __name__ == "__main__":
-    multicast_group: str = str(input())
+    if len(sys.argv) < 2:
+        print("Enter multicast group address")
+        exit()
+    multicast_group: str = str(sys.argv[1])
     copy_finder: CopyFinder = CopyFinder(multicast_group)
     copy_finder.find_copy()
