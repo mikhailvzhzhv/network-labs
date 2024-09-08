@@ -23,7 +23,7 @@ class CopyFinder:
         self.__copies: dict = dict()
         self.__diconnected_copies: list = list()
         self.__ttl: int = 32
-        self.__timer: Timer = Timer(1000)
+        self.__send_timer: Timer = Timer(500)
         self.__family = socket.AF_INET6 if ":" in self.__MC_GROUP else socket.AF_INET
         self.__sock_sender: sock = sock(
             self.__family, socket.SOCK_DGRAM, socket.IPPROTO_UDP
@@ -66,7 +66,7 @@ class CopyFinder:
                     socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq
                 )
 
-        self.__sock_receiver.settimeout(1)
+        self.__sock_receiver.settimeout(0.5)
 
     @stars_boarded
     def __print_addrs(self) -> None:
@@ -79,9 +79,9 @@ class CopyFinder:
         while True:
             try:
                 while True:
-                    _, addr_from = self.__sock_receiver.recvfrom(10)
+                    _, addr_from = self.__sock_receiver.recvfrom(0)
                     if not self.__copies.get(addr_from):
-                        self.__copies[addr_from] = Timer(3000)
+                        self.__copies[addr_from] = Timer(4000)
                         print(f"Copy from {addr_from} connected")
                         self.__print_addrs()
                     life_timer: Timer = self.__copies.get(addr_from)
@@ -89,19 +89,19 @@ class CopyFinder:
             except TimeoutError:
                 pass
 
-            if self.__timer.expired():
+            if self.__send_timer.expired():
                 self.__sock_sender.sendto(bytes([]), self.__ADDRESS)
-                self.__timer.reset()
+                self.__send_timer.reset()
 
             for address, life_timer in self.__copies.items():
                 if life_timer.expired():
                     self.__diconnected_copies.append(address)
 
-            for address in self.__diconnected_copies:
-                print(f"Copy from {address} disconnected")
-                self.__copies.pop(address)
-
             if len(self.__diconnected_copies) != 0:
+                for address in self.__diconnected_copies:
+                    print(f"Copy from {address} disconnected")
+                    self.__copies.pop(address)
+
                 self.__print_addrs()
                 self.__diconnected_copies.clear()
 
