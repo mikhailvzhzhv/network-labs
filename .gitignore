@@ -1,2 +1,5 @@
 .vscode
+*.out
 __pycache__
+
+/uploads
