@@ -1,5 +1,7 @@
 .vscode
 *.out
 __pycache__
+.env
 
 uploads
+venv
