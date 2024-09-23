@@ -1,0 +1,1 @@
+WIDTH: int = 70
