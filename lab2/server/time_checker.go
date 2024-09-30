@@ -20,10 +20,6 @@ func (timer *Timer) init(sec float64) {
 	timer.partTime = time.Now()
 }
 
-func (timer *Timer) expired() bool {
-	return time.Since(timer.partTime).Seconds() > timer.sec
-}
-
 func (timer *Timer) reset() {
 	timer.partTime = time.Now()
 }
@@ -45,10 +41,6 @@ func (s *SpeedChecker) getAverageSpeed() int64 {
 
 func (s *SpeedChecker) getPartSpeed() int64 {
 	return s.partBytesCount / int64(time.Since(s.timer.partTime).Seconds())
-}
-
-func (s *SpeedChecker) expired() bool {
-	return s.timer.expired()
 }
 
 func (s *SpeedChecker) reset() {

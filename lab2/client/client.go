@@ -12,12 +12,20 @@ import (
 
 const LENGTH_BUFFER int = 4096
 
+type Sender struct {
+	conn   net.Conn
+	status *utils.UploadStatus
+}
+
 func sendFile(conn net.Conn, file *os.File) error {
+	sender := Sender{conn: conn, status: new(utils.UploadStatus)}
+
 	file_info, err := file.Stat()
 	if err != nil {
 		return err
 	}
 
+	var ok bool
 	header := utils.FileHeader{
 		Filename: file_info.Name(),
 		Size:     file_info.Size(),
@@ -28,10 +36,14 @@ func sendFile(conn net.Conn, file *os.File) error {
 		return err
 	}
 
-	utils.Send(conn, encodedHeader)
+	utils.Send(sender.conn, encodedHeader)
 
 	buf := make([]byte, LENGTH_BUFFER)
+	receiveStatus(sender, buf, false)
+
 	var chunk = new(utils.FileChunk)
+	chunk.Size = int64(LENGTH_BUFFER)
+	chunk.Data = make([]byte, LENGTH_BUFFER)
 
 	for {
 		n, err := file.Read(buf)
@@ -42,8 +54,6 @@ func sendFile(conn net.Conn, file *os.File) error {
 			break
 		}
 
-		chunk.Size = int64(n)
-		chunk.Data = make([]byte, n)
 		copy(chunk.Data, buf[:n])
 
 		encoded_chunk, err := json.Marshal(chunk)
@@ -51,33 +61,46 @@ func sendFile(conn net.Conn, file *os.File) error {
 			return err
 		}
 
-		_, err = utils.Send(conn, encoded_chunk)
+		_, err = utils.Send(sender.conn, encoded_chunk)
 		if err != nil {
 			return err
 		}
+
+		ok, err = receiveStatus(sender, buf, false)
+		if !ok {
+			fmt.Println("Failed")
+			return err
+		}
+
 	}
+
+	receiveStatus(sender, buf, true)
 
 	return err
 }
 
-func receiveStatus(conn net.Conn) error {
-	status := new(utils.UploadStatus)
-	buf := make([]byte, LENGTH_BUFFER)
-	n, err := utils.Receive(conn, buf)
+func receiveStatus(sender Sender, buf []byte, endmode bool) (bool, error) {
+	n, err := utils.Receive(sender.conn, buf)
 	if err != nil {
-		return err
+		return false, err
 	}
-	json.Unmarshal(buf[:n], status)
+	json.Unmarshal(buf[:n], sender.status)
 
-	switch status.Status {
-	case utils.SUCCESS:
-		fmt.Println("Success!")
+	if endmode {
+		switch sender.status.Status {
+		case utils.SUCCESS:
+			fmt.Println("Success!")
 
-	case utils.FAILED:
-		fmt.Println("Failed")
+		case utils.FAILED:
+			fmt.Println("Failed")
+		}
 	}
 
-	return err
+	if sender.status.Status == utils.FAILED {
+		return false, err
+	}
+
+	return true, err
 }
 
 func main() {
@@ -107,11 +130,6 @@ func main() {
 	defer file.Close()
 
 	err = sendFile(conn, file)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-
-	err = receiveStatus(conn)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
