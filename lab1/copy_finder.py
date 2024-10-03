@@ -37,9 +37,7 @@ class CopyFinder:
                 self.sock_sender.setsockopt(
                     socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.ttl
                 )
-                self.sock_receiver.setsockopt(
-                    socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-                )
+                self.sock_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 self.sock_receiver.bind(("0.0.0.0", self.PORT))
 
                 mreq = struct.pack(
@@ -52,9 +50,7 @@ class CopyFinder:
                 self.sock_sender.setsockopt(
                     socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, self.ttl
                 )
-                self.sock_receiver.setsockopt(
-                    socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-                )
+                self.sock_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 self.sock_receiver.bind(("::", self.PORT))
 
                 mreq = struct.pack(

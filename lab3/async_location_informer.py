@@ -23,7 +23,9 @@ class PlaceInformer:
 
     async def fetch_all(self, reqs: list) -> list:
         async with aiohttp.ClientSession() as session:
-            return await asyncio.gather(*[self.fetch_passed_session(session, req) for req in reqs])
+            return await asyncio.gather(
+                *[self.fetch_passed_session(session, req) for req in reqs]
+            )
 
     async def run(self):
         geoResp = await self.fetch_new_session(self.dataProvider.geoRequest)
