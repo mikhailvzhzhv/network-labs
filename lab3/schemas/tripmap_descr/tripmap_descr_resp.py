@@ -65,7 +65,7 @@ class DescrResponse:
         self.info = Info(**info) if info is not None else None
 
     @staticmethod
-    def formatResponse(descrResp: dict) -> None:
+    def formatResponse(descrResp: dict) -> dict:
         r = dict()
         r["xid"] = descrResp["xid"]
         r["name"] = descrResp["name"]

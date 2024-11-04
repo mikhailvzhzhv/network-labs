@@ -13,3 +13,15 @@ func RaiseHandshakeError(message string) *HandshakeError {
 func (e *HandshakeError) Error() string {
 	return fmt.Sprintf("Handshake error: %v", e.message)
 }
+
+type ConnectionError struct {
+	message string
+}
+
+func RaiseConnectionError(message string) *ConnectionError {
+	return &ConnectionError{message: message}
+}
+
+func (e *ConnectionError) Error() string {
+	return fmt.Sprintf("Connection error: %v", e.message)
+}
